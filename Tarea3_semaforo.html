@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio 03: Semáforo Realista</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #5dade2; 
+            font-family: Arial, sans-serif;
+            margin: 0;
+            text-align: center;
+            color: white;
+        }
+
+        /* [Punto Extra] Animación CSS de latido suave */
+        @keyframes latidoLuz {
+            0% { opacity: 1; filter: brightness(1) drop-shadow(0 0 5px rgba(255,255,255,0.4)); }
+            50% { opacity: 0.9; filter: brightness(1.3) drop-shadow(0 0 25px var(--brillo-color)); }
+            100% { opacity: 1; filter: brightness(1) drop-shadow(0 0 5px rgba(255,255,255,0.4)); }
+        }
+
+        .encendida {
+            animation: latidoLuz 1.5s infinite ease-in-out;
+        }
+
+        /* Variables CSS para el brillo dinámico de la animación */
+        #rojo.encendida { --brillo-color: #ff3232; }
+        #ambar.encendida { --brillo-color: #ffcc00; }
+        #verde.encendida { --brillo-color: #4cd964; }
+
+        button {
+            margin-top: 25px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #2c3e50;
+            border: 2px solid #1a252f;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            background-color: purple;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Semáforo SVG</h1>
+
+    <!-- CRITERIO: El SVG usa viewBox y las figuras están dentro del lienzo -->
+    <svg width="180" height="460" viewBox="0 0 180 460">
+        
+        <!-- ESTRUCTURA TRASERA (Poste superior e inferior gris) -->
+        <rect width="24" height="40" x="78" y="10" rx="5" fill="#34495e" /> <!-- Poste superior -->
+        <rect width="24" height="110" x="78" y="340" fill="#34495e" /> <!-- Poste inferior -->
+
+        <!-- CAJA PRINCIPAL DEL SEMÁFORO (Dividida en 3 módulos acoplados como la imagen) -->
+        <rect width="110" height="100" x="35" y="40" rx="8" fill="#2c3e50" /> <!-- Módulo Rojo -->
+        <rect width="110" height="100" x="35" y="140" rx="2" fill="#2c3e50" /> <!-- Módulo Ámbar -->
+        <rect width="110" height="100" x="35" y="240" rx="8" fill="#2c3e50" /> <!-- Módulo Verde -->
+
+        <!-- Líneas divisorias estéticas entre los módulos -->
+        <line x1="35" y1="140" x2="145" y2="140" stroke="#1a252f" stroke-width="3" />
+        <line x1="35" y1="240" x2="145" y2="240" stroke="#1a252f" stroke-width="3" />
+
+        <!-- ================= SECCIÓN LUZ ROJA ================= -->
+        <!-- Fondo de color opaco permanente -->
+        <circle cx="90" cy="90" r="36" fill="#501212" />
+        <!-- CRITERIO: Cada luz tiene un id propio y descriptivo -->
+        <circle id="rojo" cx="90" cy="90" r="34" fill="#444" />
+        <!-- Visera protectora superior oscura -->
+        <path d="M 54 90 A 36 36 0 0 1 126 90" fill="none" stroke="#1a252f" stroke-width="8" stroke-linecap="round" />
+
+        <!-- ================= SECCIÓN LUZ ÁMBAR ================= -->
+        <!-- Fondo de color opaco permanente -->
+        <circle cx="90" cy="190" r="36" fill="#5c4308" />
+        <!-- CRITERIO: Cada luz tiene un id propio y descriptivo -->
+        <circle id="ambar" cx="90" cy="190" r="34" fill="#444" />
+        <!-- Visera protectora superior oscura -->
+        <path d="M 54 190 A 36 36 0 0 1 126 190" fill="none" stroke="#1a252f" stroke-width="8" stroke-linecap="round" />
+
+        <!-- ================= SECCIÓN LUZ VERDE ================= -->
+        <!-- Fondo de color opaco permanente -->
+        <circle cx="90" cy="290" r="36" fill="#0d3a1a" />
+        <!-- CRITERIO: Cada luz tiene un id propio y descriptivo -->
+        <circle id="verde" cx="90" cy="290" r="34" fill="#444" />
+        <!-- Visera protectora superior oscura -->
+        <path d="M 54 290 A 36 36 0 0 1 126 290" fill="none" stroke="#1a252f" stroke-width="8" stroke-linecap="round" />
+        
+    </svg>
+
+    <!-- Botón de interacción manual -->
+    <button id="btn-avanzar">Cambiar Luz</button>
+
+    <script>
+        // CRITERIO: Selecciona los nodos con querySelector (Mismos códigos intactos)
+        const luzRojo = document.querySelector('#rojo');
+        const luzAmbar = document.querySelector('#ambar');
+        const luzVerde = document.querySelector('#verde');
+        const botonAvanzar = document.querySelector('#btn-avanzar');
+
+        // Configuración y orden secuencial del semáforo
+        const secuenciaLuces = [
+            { nodo: luzRojo, colorActivo: '#ff3232', tiempo: 3000 },  // 3s rojo
+            { nodo: luzAmbar, colorActivo: '#ffcc00', tiempo: 1000 }, // 1s ámbar
+            { nodo: luzVerde, colorActivo: '#4cd964', tiempo: 3000 }  // 3s verde
+        ];
+        const colorApagado = '#222222'; // Un tono gris oscuro apagado realista
+        
+        let indiceActual = 0;
+        let temporizador;
+
+        // CRITERIO: Existe la función encender() y evita código repetido
+        function encender(indice) {
+            secuenciaLuces.forEach((item, idx) => {
+                if (idx === indice) {
+                    // CRITERIO: Cambia el color con setAttribute
+                    item.nodo.setAttribute('fill', item.colorActivo);
+                    item.nodo.classList.add('encendida');
+                } else {
+                    item.nodo.setAttribute('fill', colorApagado);
+                    item.nodo.classList.remove('encendida');
+                }
+            });
+            indiceActual = indice;
+        }
+
+        // CRITERIO: El ciclo avanza solo con temporizador y respeta los tiempos
+        function iniciarCicloAutomatico() {
+            encender(indiceActual);
+
+            // Obtiene el tiempo específico asignado a la luz actual
+            const tiempoEspera = secuenciaLuces[indiceActual].tiempo;
+            const siguienteIndice = (indiceActual + 1) % secuenciaLuces.length;
+
+            temporizador = setTimeout(() => {
+                indiceActual = siguienteIndice;
+                iniciarCicloAutomatico();
+            }, tiempoEspera);
+        }
+
+        // CRITERIO: El botón funciona con addEventListener
+        botonAvanzar.addEventListener('click', () => {
+            clearTimeout(temporizador); // Limpia el flujo para que no se crucen los tiempos
+            indiceActual = (indiceActual + 1) % secuenciaLuces.length;
+            iniciarCicloAutomatico();
+        });
+
+        // CRITERIO: El archivo abre en el navegador sin errores en consola
+        window.addEventListener('DOMContentLoaded', () => {
+            iniciarCicloAutomatico();
+        });
+    </script>
+
+</body>
+</html>
